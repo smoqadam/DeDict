@@ -16,7 +16,7 @@ function buildEntry(array $row): array {
         'article'  => article($row['gender']),
         'ipa'      => $row['ipa'],
         'audio'    => json_decode($row['audio'], true) ?: [],
-        'hyphen'   => $row['hyphenation'],
+        'hyphen'   => decodeUnicodeEscapes($row['hyphenation']),
         'senses'   => json_decode($row['senses'], true) ?: [],
         'synonyms' => json_decode($row['synonyms'], true) ?: [],
         'antonyms' => json_decode($row['antonyms'], true) ?: [],
@@ -67,6 +67,16 @@ function lookup(string $q, SQLite3 $db): array {
     }
 
     return $results;
+}
+
+// Some fields (e.g. hyphenation) were stored with literal \uXXXX escapes
+// rather than the decoded character. Turn them back into real text.
+function decodeUnicodeEscapes(?string $s): ?string {
+    if ($s === null || $s === '' || strpos($s, '\\u') === false) {
+        return $s;
+    }
+    $decoded = json_decode('"' . str_replace('"', '\\"', $s) . '"');
+    return is_string($decoded) ? $decoded : $s;
 }
 
 function h(string $s): string {
