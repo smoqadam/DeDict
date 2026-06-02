@@ -3,6 +3,10 @@
 
 $src = 'kaikki.org-dictionary-Deutsch.jsonl';
 $dbPath = '../data/dedict.db';
+if (!file_exists($dbPath)) {
+   touch($dbPath); 
+}
+
 $dir = dirname($dbPath);
 
 $db = new SQLite3($dbPath);
