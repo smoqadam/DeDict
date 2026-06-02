@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
-
+header('Access-Control-Allow-Origin: *');
 if ($q === '') {
     http_response_code(400);
     echo json_encode(['error' => 'word must not be empty'], JSON_UNESCAPED_UNICODE);
