@@ -17,7 +17,7 @@ function buildEntry(array $row): array {
         'ipa'      => $row['ipa'],
         'audio'    => json_decode($row['audio'], true) ?: [],
         'hyphen'   => decodeUnicodeEscapes($row['hyphenation']),
-        'senses'   => json_decode($row['senses'], true) ?: [],
+        'senses'   => [],  // attached by lookup() from de_senses
         'synonyms' => json_decode($row['synonyms'], true) ?: [],
         'antonyms' => json_decode($row['antonyms'], true) ?: [],
     ];
@@ -49,7 +49,7 @@ function lookup(string $q, SQLite3 $db): array {
     $stmtF = $db->prepare(
         "SELECT f.word AS form_word,
                 w.id, w.word, w.pos, w.gender, w.ipa, w.audio,
-                w.hyphenation, w.senses, w.synonyms, w.antonyms, w.tags
+                w.hyphenation, w.synonyms, w.antonyms, w.tags
          FROM de_forms f
          JOIN de_words w ON w.id = f.lemma_id
          WHERE f.word = :w"
@@ -66,7 +66,39 @@ function lookup(string $q, SQLite3 $db): array {
         }
     }
 
+    attachSenses($db, $results);
+
     return $results;
+}
+
+function attachSenses(SQLite3 $db, array &$results): void {
+    if (!$results) return;
+
+    $ids = array_column($results, 'id');
+    $ph  = implode(',', array_fill(0, count($ids), '?'));
+    $stmt = $db->prepare(
+        "SELECT word_id, definition, simple_de, en_translation, examples
+         FROM de_senses WHERE word_id IN ($ph) ORDER BY word_id, idx"
+    );
+    foreach ($ids as $i => $id) {
+        $stmt->bindValue($i + 1, $id, SQLITE3_INTEGER);
+    }
+
+    $byWord = [];
+    $res = $stmt->execute();
+    while ($r = $res->fetchArray(SQLITE3_ASSOC)) {
+        $byWord[$r['word_id']][] = [
+            'definition' => $r['definition'],
+            'simple_de'  => $r['simple_de'],
+            'english'    => json_decode($r['en_translation'], true) ?: [],
+            'examples'   => json_decode($r['examples'], true) ?: [],
+        ];
+    }
+
+    foreach ($results as &$e) {
+        $e['senses'] = $byWord[$e['id']] ?? [];
+    }
+    unset($e);
 }
 
 // Some fields (e.g. hyphenation) were stored with literal \uXXXX escapes

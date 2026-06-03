@@ -14,6 +14,7 @@ $db->exec('PRAGMA journal_mode=WAL');
 $db->exec('PRAGMA synchronous=OFF');
 
 $db->exec("
+    DROP TABLE IF EXISTS de_senses;
     DROP TABLE IF EXISTS de_forms;
     DROP TABLE IF EXISTS de_words;
 
@@ -25,11 +26,20 @@ $db->exec("
         ipa TEXT,
         audio TEXT,
         hyphenation TEXT,
-        senses TEXT,
         synonyms TEXT,
         antonyms TEXT,
         tags TEXT,
         UNIQUE(word, pos)
+    );
+
+    CREATE TABLE de_senses (
+        id INTEGER PRIMARY KEY,
+        word_id INTEGER NOT NULL REFERENCES de_words(id),
+        idx INTEGER NOT NULL,
+        definition TEXT NOT NULL,
+        simple_de TEXT,
+        en_translation TEXT,
+        examples TEXT
     );
 
     CREATE TABLE de_forms (
@@ -40,14 +50,21 @@ $db->exec("
     );
 
     CREATE INDEX idx_de_words_word ON de_words(word);
+    CREATE INDEX idx_de_senses_word ON de_senses(word_id);
     CREATE INDEX idx_de_forms_word ON de_forms(word);
     CREATE INDEX idx_de_forms_lemma ON de_forms(lemma_id);
 ");
 
 $insertWord = $db->prepare(
     "INSERT OR IGNORE INTO de_words
-     (word, pos, gender, ipa, audio, hyphenation, senses, synonyms, antonyms, tags)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+     (word, pos, gender, ipa, audio, hyphenation, synonyms, antonyms, tags)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+);
+
+$insertSense = $db->prepare(
+    "INSERT INTO de_senses
+     (word_id, idx, definition, simple_de, en_translation, examples)
+     VALUES (?, ?, ?, ?, ?, ?)"
 );
 
 $insertForm = $db->prepare(
@@ -97,17 +114,20 @@ function hyphenation(array $entry): ?string {
     return null;
 }
 
-function senses(array $entry): string {
+function sensesList(array $entry): array {
     $out = [];
     foreach ($entry['senses'] ?? [] as $sense) {
         $tags = $sense['tags'] ?? [];
         if (in_array('form-of', $tags, true)) continue;
 
-        $glosses = $sense['glosses'] ?? [];
+        // glosses can be a parent->refinement chain that together form one
+        // definition; join them rather than dropping all but the first.
+        $glosses = array_values(array_filter(
+            array_map('trim', $sense['glosses'] ?? []),
+            fn($g) => $g !== ''
+        ));
         if (empty($glosses)) continue;
-
-        $first = trim($glosses[0]);
-        if (str_ends_with($first, ':')) continue;
+        if (str_ends_with($glosses[0], ':')) continue;  // label-only sense
 
         $eng = englishTranslations($entry, $sense['sense_index'] ?? null);
         $examples = [];
@@ -115,22 +135,28 @@ function senses(array $entry): string {
             $examples[] = ['text' => $ex['text'] ?? '', 'ref' => $ex['ref'] ?? null];
         }
         $out[] = [
-            'definition' => $first,
+            'definition' => implode(' ', $glosses),
             'english' => $eng,
             'examples' => $examples,
         ];
     }
-    return json_encode($out, JSON_UNESCAPED_UNICODE);
+    return $out;
 }
 
 function englishTranslations(array $entry, ?string $senseIndex): array {
     if ($senseIndex === null) return [];
     $out = [];
     foreach ($entry['translations'] ?? [] as $t) {
-        if (($t['lang_code'] ?? '') === 'en' && ($t['sense_index'] ?? null) === $senseIndex) {
-            $w = $t['word'] ?? '';
-            if ($w !== '' && !in_array($w, $out, true)) {
-                $out[] = $w;
+        if (($t['lang_code'] ?? '') !== 'en' || ($t['sense_index'] ?? null) !== $senseIndex) {
+            continue;
+        }
+        // kaikki strips German qualifiers into raw_tags and leaves empty "( )"
+        // behind, and packs several alternatives into one comma-separated word.
+        $w = preg_replace('/\s*\(\s*\)/', '', $t['word'] ?? '');
+        foreach (explode(',', $w) as $part) {
+            $part = trim($part);
+            if ($part !== '' && !in_array($part, $out, true)) {
+                $out[] = $part;
             }
         }
     }
@@ -208,7 +234,6 @@ while (($line = fgets($handle)) !== false) {
         ipa($entry),
         audio($entry),
         hyphenation($entry),
-        senses($entry),
         related($entry, 'synonyms'),
         related($entry, 'antonyms'),
         json_encode($entry['tags'] ?? [], JSON_UNESCAPED_UNICODE),
@@ -238,8 +263,57 @@ while ($row = $result->fetchArray(SQLITE3_ASSOC)) {
 }
 echo '  ' . count($lemmaMap) . " entries in map\n";
 
+////////
+echo "pass 1b: inserting senses …\n";
+$nSenses = 0;
+$seenWordIds = [];
+$batchS = [];
+$handle = fopen($src, 'r');
+if (!$handle) {
+    fwrite(STDERR, "cannot open: $src\n");
+    exit(1);
+}
 
+while (($line = fgets($handle)) !== false) {
+    $entry = json_decode($line, true);
+    if (!is_array($entry)) continue;
+    if (formOfLemma($entry) !== null) continue;
 
+    $word = $entry['word'] ?? '';
+    if ($word === '') continue;
+
+    $pos = $entry['pos'] ?? 'unknown';
+    $nw = normalize($word);
+    $wid = $lemmaMap[$nw . "\0" . $pos] ?? ($wordMap[$nw][0] ?? null);
+    if ($wid === null) continue;
+
+    // INSERT OR IGNORE kept only the first de_words row per (word, pos);
+    // attach senses to that row once, from the first matching entry.
+    if (isset($seenWordIds[$wid])) continue;
+    $seenWordIds[$wid] = true;
+
+    foreach (sensesList($entry) as $idx => $s) {
+        $batchS[] = [
+            $wid,
+            $idx,
+            $s['definition'],
+            null,
+            json_encode($s['english'], JSON_UNESCAPED_UNICODE),
+            json_encode($s['examples'], JSON_UNESCAPED_UNICODE),
+        ];
+        $nSenses++;
+    }
+
+    if (count($batchS) >= 5000) {
+        flushSenses($db, $insertSense, $batchS);
+        $batchS = [];
+    }
+}
+if (!empty($batchS)) {
+    flushSenses($db, $insertSense, $batchS);
+}
+fclose($handle);
+echo "  $nSenses sense entries\n";
 
 
 
@@ -303,7 +377,19 @@ function flushWords(SQLite3 $db, SQLite3Stmt $stmt, array $batch): void {
     $db->exec('BEGIN TRANSACTION');
     foreach ($batch as $row) {
         $stmt->reset();
-        for ($i = 0; $i < 10; $i++) {
+        for ($i = 0; $i < 9; $i++) {
+            $stmt->bindValue($i + 1, $row[$i]);
+        }
+        $stmt->execute();
+    }
+    $db->exec('COMMIT');
+}
+
+function flushSenses(SQLite3 $db, SQLite3Stmt $stmt, array $batch): void {
+    $db->exec('BEGIN TRANSACTION');
+    foreach ($batch as $row) {
+        $stmt->reset();
+        for ($i = 0; $i < 6; $i++) {
             $stmt->bindValue($i + 1, $row[$i]);
         }
         $stmt->execute();
