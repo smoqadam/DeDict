@@ -1,1 +1,8 @@
 scripts/kaikki.org-dictionary-Deutsch.jsonl
+.env
+
+.DS_Store
+
+/old/
+
+data/dedict.db

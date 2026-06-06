@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__ . '/enrich.php';
+
 function mb_ucfirst_safe(string $s): string {
     $first = mb_substr($s, 0, 1);
     $rest  = mb_substr($s, 1);
@@ -68,6 +70,15 @@ function lookup(string $q, SQLite3 $db): array {
 
     attachSenses($db, $results);
 
+    if (openaiKey() !== null) {
+        foreach ($results as &$e) {
+            if (entryNeedsEnrichment($e)) {
+                enrichEntry($db, $e);
+            }
+        }
+        unset($e);
+    }
+
     return $results;
 }
 
@@ -77,7 +88,7 @@ function attachSenses(SQLite3 $db, array &$results): void {
     $ids = array_column($results, 'id');
     $ph  = implode(',', array_fill(0, count($ids), '?'));
     $stmt = $db->prepare(
-        "SELECT word_id, definition, simple_de, en_translation, examples
+        "SELECT id, word_id, idx, definition, simple_de, en_translation, examples
          FROM de_senses WHERE word_id IN ($ph) ORDER BY word_id, idx"
     );
     foreach ($ids as $i => $id) {
@@ -88,6 +99,8 @@ function attachSenses(SQLite3 $db, array &$results): void {
     $res = $stmt->execute();
     while ($r = $res->fetchArray(SQLITE3_ASSOC)) {
         $byWord[$r['word_id']][] = [
+            'id'         => (int)$r['id'],
+            'idx'        => (int)$r['idx'],
             'definition' => $r['definition'],
             'simple_de'  => $r['simple_de'],
             'english'    => json_decode($r['en_translation'], true) ?: [],

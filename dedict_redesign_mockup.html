@@ -1,0 +1,613 @@
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  .dd-root {
+    --paper: #FAFAF7;
+    --card: #FFFFFF;
+    --border: rgba(0,0,0,0.08);
+    --border-strong: rgba(0,0,0,0.14);
+    --ink: #1A1916;
+    --ink-2: #4A4844;
+    --ink-3: #8A8780;
+    --m: #1B5DA8;
+    --f: #B3344A;
+    --n: #2A7A52;
+    --accent: #2A5BA8;
+    --accent-bg: #EEF3FC;
+    font-family: 'DM Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    padding: 0;
+    min-height: 600px;
+  }
+
+  .dd-topbar {
+    background: #FFFFFF;
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .dd-logo {
+    font-family: 'Lora', serif;
+    font-weight: 600;
+    font-size: 18px;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dd-logo-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: inline-block;
+    margin-bottom: 1px;
+  }
+  .dd-search-wrap {
+    flex: 1;
+    max-width: 380px;
+    position: relative;
+  }
+  .dd-search-input {
+    width: 100%;
+    height: 36px;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    padding: 0 36px 0 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    color: var(--ink);
+    background: var(--paper);
+    outline: none;
+  }
+  .dd-search-icon {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--ink-3);
+    font-size: 15px;
+  }
+  .dd-nav-links {
+    margin-left: auto;
+    display: flex;
+    gap: 4px;
+  }
+  .dd-nav-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .dd-nav-btn:hover { background: var(--paper); color: var(--ink); }
+  .dd-nav-btn.active { background: var(--accent-bg); color: var(--accent); }
+
+  .dd-layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 0;
+    min-height: 544px;
+  }
+
+  .dd-sidebar {
+    border-right: 1px solid var(--border);
+    padding: 20px 0;
+    background: #FDFDFA;
+  }
+  .dd-sidebar-section {
+    padding: 0 16px 20px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .dd-sidebar-section:last-child { border-bottom: none; margin-bottom: 0; }
+  .dd-sidebar-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin-bottom: 10px;
+  }
+
+  .dd-wotd-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .dd-wotd-word {
+    font-family: 'Lora', serif;
+    font-weight: 600;
+    font-size: 20px;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    line-height: 1.1;
+  }
+  .dd-wotd-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 4px 0 8px;
+  }
+  .dd-art {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .dd-art.m { color: var(--m); background: #E8F0FB; }
+  .dd-art.f { color: var(--f); background: #FBEAED; }
+  .dd-art.n { color: var(--n); background: #E7F4EE; }
+  .dd-pos-pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .dd-wotd-def {
+    font-size: 12px;
+    color: var(--ink-2);
+    line-height: 1.4;
+    margin-bottom: 8px;
+  }
+  .dd-wotd-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    background: none;
+    border-radius: 5px;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .dd-wotd-btn:hover { background: var(--accent-bg); }
+
+  .dd-recent-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 2px;
+    font-size: 13px;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background 0.12s;
+  }
+  .dd-recent-item:hover { background: var(--accent-bg); padding-left: 6px; }
+  .dd-recent-word { color: var(--ink-2); }
+  .dd-recent-art { font-family: 'JetBrains Mono', monospace; font-size: 9px; }
+  .dd-recent-art.m { color: var(--m); }
+  .dd-recent-art.f { color: var(--f); }
+  .dd-recent-art.n { color: var(--n); }
+
+  .dd-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .dd-legend-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11px;
+    color: var(--ink-2);
+  }
+  .dd-legend-swatch {
+    width: 20px; height: 3px;
+    border-radius: 2px;
+  }
+
+  .dd-main {
+    padding: 24px 28px;
+    overflow-y: auto;
+  }
+
+  .dd-result-header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 6px;
+  }
+  .dd-result-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--ink-3);
+    text-transform: uppercase;
+  }
+
+  .dd-entry {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+  .dd-entry-m { border-left: 3px solid var(--m); }
+  .dd-entry-f { border-left: 3px solid var(--f); }
+  .dd-entry-n { border-left: 3px solid var(--n); }
+
+  .dd-entry-head {
+    padding: 14px 18px 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .dd-entry-title-col { flex: 1; }
+  .dd-headword {
+    font-family: 'Lora', serif;
+    font-weight: 600;
+    font-size: 26px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: var(--ink);
+  }
+  .dd-entry-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 5px;
+    flex-wrap: wrap;
+  }
+  .dd-ipa {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+  .dd-hyphen {
+    font-size: 11px;
+    color: var(--ink-3);
+  }
+  .dd-audio-btn {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    border: 1px solid var(--border-strong);
+    background: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--ink-3);
+    font-size: 10px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .dd-entry-m .dd-audio-btn:hover { color: var(--m); border-color: var(--m); }
+  .dd-entry-f .dd-audio-btn:hover { color: var(--f); border-color: var(--f); }
+  .dd-entry-n .dd-audio-btn:hover { color: var(--n); border-color: var(--n); }
+  
+  .dd-save-btn {
+    width: 30px; height: 30px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--ink-3);
+    font-size: 15px;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+    flex-shrink: 0;
+  }
+  .dd-save-btn:hover { color: #D4884A; border-color: #D4884A; background: #FDF3EB; }
+
+  .dd-entry-body {
+    border-top: 1px solid var(--border);
+    padding: 14px 18px 16px;
+  }
+
+  .dd-sense-list { list-style: none; }
+  .dd-sense {
+    display: grid;
+    grid-template-columns: 22px 1fr;
+    gap: 0 8px;
+    padding: 10px 0;
+    border-top: 1px dashed var(--border);
+  }
+  .dd-sense:first-child { border-top: none; padding-top: 0; }
+  .dd-sense-num {
+    font-family: 'Lora', serif;
+    font-weight: 600;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .dd-entry-m .dd-sense-num { color: var(--m); }
+  .dd-entry-f .dd-sense-num { color: var(--f); }
+  .dd-entry-n .dd-sense-num { color: var(--n); }
+
+  .dd-def {
+    font-family: 'Lora', serif;
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--ink);
+  }
+  .dd-gloss {
+    font-size: 13px;
+    color: var(--ink-2);
+    margin-top: 2px;
+  }
+  .dd-entry-m .dd-gloss::before { content: "→ "; color: var(--m); }
+  .dd-entry-f .dd-gloss::before { content: "→ "; color: var(--f); }
+  .dd-entry-n .dd-gloss::before { content: "→ "; color: var(--n); }
+
+  .dd-simple {
+    font-size: 12.5px;
+    color: var(--ink-3);
+    border-left: 2px solid var(--border-strong);
+    padding-left: 8px;
+    margin-top: 4px;
+    font-style: italic;
+  }
+
+  .dd-ex-toggle {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px 0;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: color 0.15s;
+  }
+  .dd-entry-m .dd-ex-toggle:hover { color: var(--m); }
+  .dd-entry-f .dd-ex-toggle:hover { color: var(--f); }
+  .dd-entry-n .dd-ex-toggle:hover { color: var(--n); }
+
+  .dd-examples {
+    margin-top: 6px;
+  }
+  .dd-example {
+    border-left: 2px solid var(--border);
+    padding: 5px 0 5px 10px;
+    margin-top: 4px;
+  }
+  .dd-ex-de {
+    font-family: 'Lora', serif;
+    font-style: italic;
+    font-size: 13px;
+    color: var(--ink-2);
+    line-height: 1.4;
+  }
+  .dd-ex-en {
+    font-size: 12px;
+    color: var(--ink-3);
+    margin-top: 2px;
+  }
+
+  .dd-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+  .dd-meta-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+  }
+  .dd-meta-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .dd-pill {
+    font-size: 12px;
+    color: var(--ink-2);
+    background: #F3F2EE;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+  }
+  .dd-entry-m .dd-pill:hover { background: #E8F0FB; color: var(--m); }
+  .dd-entry-f .dd-pill:hover { background: #FBEAED; color: var(--f); }
+  .dd-entry-n .dd-pill:hover { background: #E7F4EE; color: var(--n); }
+
+  .dd-entry-2 { opacity: 0.7; }
+
+  .dd-feature-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .dd-chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 4px 9px;
+    border-radius: 5px;
+    border: 1px dashed var(--border-strong);
+    color: var(--ink-3);
+    cursor: default;
+  }
+  .dd-chip.new {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-bg);
+    border-style: solid;
+  }
+</style>
+
+<div class="dd-root">
+  <h2 class="sr-only" style="position:absolute;left:-9999px">DeDict German learner dictionary — UI design mockup</h2>
+
+  <div class="dd-topbar">
+    <div class="dd-logo">
+      <span class="dd-logo-dot"></span>
+      DeDict
+    </div>
+    <div class="dd-search-wrap">
+      <input class="dd-search-input" type="text" value="Heimweh" readonly>
+      <i class="ti ti-search dd-search-icon" aria-hidden="true"></i>
+    </div>
+    <div class="dd-nav-links">
+      <button class="dd-nav-btn active">Wörterbuch</button>
+      <button class="dd-nav-btn">Vokabeln</button>
+      <button class="dd-nav-btn">Übungen</button>
+    </div>
+  </div>
+
+  <div class="dd-layout">
+
+    <div class="dd-sidebar">
+      <div class="dd-sidebar-section">
+        <div class="dd-sidebar-label">Word of the day</div>
+        <div class="dd-wotd-card">
+          <div class="dd-wotd-word">Fernweh</div>
+          <div class="dd-wotd-meta">
+            <span class="dd-art n">das</span>
+            <span class="dd-pos-pill">noun</span>
+          </div>
+          <div class="dd-wotd-def">Longing for distant places; the opposite of homesickness.</div>
+          <button class="dd-wotd-btn">Look up →</button>
+        </div>
+      </div>
+
+      <div class="dd-sidebar-section">
+        <div class="dd-sidebar-label">Recent searches</div>
+        <div class="dd-recent-item"><span class="dd-recent-word">Schadenfreude</span><span class="dd-recent-art n">das</span></div>
+        <div class="dd-recent-item"><span class="dd-recent-word">Weltanschauung</span><span class="dd-recent-art f">die</span></div>
+        <div class="dd-recent-item"><span class="dd-recent-word">Gemütlichkeit</span><span class="dd-recent-art f">die</span></div>
+        <div class="dd-recent-item"><span class="dd-recent-word">Zeitgeist</span><span class="dd-recent-art m">der</span></div>
+        <div class="dd-recent-item"><span class="dd-recent-word">Angst</span><span class="dd-recent-art f">die</span></div>
+      </div>
+
+      <div class="dd-sidebar-section">
+        <div class="dd-sidebar-label">Gender colors</div>
+        <div class="dd-legend">
+          <div class="dd-legend-row"><span class="dd-legend-swatch" style="background:var(--m)"></span>der — masculine</div>
+          <div class="dd-legend-row"><span class="dd-legend-swatch" style="background:var(--f)"></span>die — feminine</div>
+          <div class="dd-legend-row"><span class="dd-legend-swatch" style="background:var(--n)"></span>das — neuter</div>
+        </div>
+      </div>
+
+      <div class="dd-sidebar-section">
+        <div class="dd-sidebar-label">Coming soon</div>
+        <div class="dd-feature-chips">
+          <span class="dd-chip new">Flashcards</span>
+          <span class="dd-chip">Quiz mode</span>
+          <span class="dd-chip">Audio drill</span>
+          <span class="dd-chip">Conjugation</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="dd-main">
+      <div class="dd-result-header">
+        <span class="dd-result-count">2 results for "Heimweh"</span>
+      </div>
+
+      <div class="dd-entry dd-entry-n">
+        <div class="dd-entry-head">
+          <div class="dd-entry-title-col">
+            <div class="dd-headword">Heimweh</div>
+            <div class="dd-entry-meta-row">
+              <button class="dd-audio-btn" title="Play pronunciation" aria-label="Play pronunciation">
+                <i class="ti ti-player-play" aria-hidden="true"></i>
+              </button>
+              <span class="dd-art n">das</span>
+              <span class="dd-pos-pill">noun · neuter</span>
+              <span class="dd-ipa">/ˈhaɪmveː/</span>
+              <span class="dd-hyphen">Heim·weh</span>
+            </div>
+          </div>
+          <button class="dd-save-btn" title="Save word" aria-label="Save to vocabulary list">
+            <i class="ti ti-bookmark" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div class="dd-entry-body">
+          <ol class="dd-sense-list">
+            <li class="dd-sense">
+              <span class="dd-sense-num">1</span>
+              <div>
+                <div class="dd-def">Sehnsucht nach der Heimat oder nach vertrauten Menschen</div>
+                <div class="dd-simple">Das Gefühl, wenn man weit weg von zu Hause ist und sich zurück wünscht.</div>
+                <div class="dd-gloss">homesickness, nostalgia for home</div>
+                <button class="dd-ex-toggle"><span>▸</span> 2 examples</button>
+                <div class="dd-examples">
+                  <div class="dd-example">
+                    <div class="dd-ex-de">Nach drei Wochen im Ausland bekam sie starkes Heimweh.</div>
+                    <div class="dd-ex-en">After three weeks abroad, she got a strong bout of homesickness.</div>
+                  </div>
+                  <div class="dd-example">
+                    <div class="dd-ex-de">Das Heimweh übermannte ihn beim Anblick des alten Fotos.</div>
+                    <div class="dd-ex-en">Homesickness overcame him at the sight of the old photo.</div>
+                  </div>
+                </div>
+              </div>
+            </li>
+          </ol>
+          <div class="dd-meta-row">
+            <div class="dd-meta-group">
+              <span class="dd-meta-label">Syn</span>
+              <button class="dd-pill">Sehnsucht</button>
+              <button class="dd-pill">Nostalgie</button>
+              <button class="dd-pill">Wehmut</button>
+            </div>
+            <div class="dd-meta-group">
+              <span class="dd-meta-label">Ant</span>
+              <button class="dd-pill">Fernweh</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dd-entry dd-entry-n dd-entry-2">
+        <div class="dd-entry-head">
+          <div class="dd-entry-title-col">
+            <div class="dd-headword" style="font-size:20px">heimwehkrank</div>
+            <div class="dd-entry-meta-row">
+              <span class="dd-pos-pill">adjective · ← Heimweh</span>
+            </div>
+          </div>
+        </div>
+        <div class="dd-entry-body">
+          <ol class="dd-sense-list">
+            <li class="dd-sense">
+              <span class="dd-sense-num">1</span>
+              <div>
+                <div class="dd-def">an Heimweh leidend</div>
+                <div class="dd-gloss">homesick</div>
+              </div>
+            </li>
+          </ol>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
