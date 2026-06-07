@@ -243,16 +243,6 @@ if ($entries) {
   .dd-entry-f .dd-audio-btn:hover { color: var(--f); border-color: var(--f); }
   .dd-entry-n .dd-audio-btn:hover { color: var(--n); border-color: var(--n); }
 
-  .dd-save-btn {
-    width: 30px; height: 30px; border-radius: 7px;
-    border: 1px solid var(--border); background: none;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; color: var(--ink-3); font-size: 15px; flex-shrink: 0;
-    transition: color 0.15s, border-color 0.15s, background 0.15s;
-  }
-  .dd-save-btn:hover { color: #D4884A; border-color: #D4884A; background: #FDF3EB; }
-  .dd-save-btn.saved { color: #D4884A; border-color: #D4884A; background: #FDF3EB; }
-
   .dd-entry-body { border-top: 1px solid var(--border); padding: 14px 18px 16px; }
 
   .dd-sense-list { list-style: none; }
@@ -328,9 +318,7 @@ if ($entries) {
       <button class="dd-search-icon" type="submit" aria-label="Suchen"><i class="ti ti-search" aria-hidden="true"></i></button>
     </form>
     <nav class="dd-nav-links">
-      <a class="dd-nav-btn active" href="/">Wörterbuch</a>
-      <button class="dd-nav-btn" type="button">Vokabeln</button>
-      <button class="dd-nav-btn" type="button">Übungen</button>
+      
       <details class="dd-about">
         <summary class="dd-nav-btn">About</summary>
         <div class="dd-about-panel">
@@ -372,6 +360,19 @@ if ($entries) {
           <div class="dd-legend-row"><span class="dd-legend-swatch" style="background:var(--n)"></span>das — neuter</div>
         </div>
       </div>
+      
+      <div class="dd-sidebar-section">
+        <!-- <div class="dd-sidebar-label">open-source</div> -->
+        <div class="dd-legend">
+          <div class="dd-legend-row">
+            DeDict on <a class="dd-nav-btn" href="https://github.com/smoqadam/DeDict" target="_blank" rel="noopener" aria-label="GitHub"><i class="ti ti-brand-github" aria-hidden="true" style="font-size: 15px;"></i> GitHub <i class="ti ti-external-link" aria-hidden="true" style="font-size: 12px; margin-left: 2px;"></i></a>
+          </div>
+            <div class="dd-legend-row">
+            
+            </div>
+          </div>
+        
+        </div>
     </aside>
 
     <main class="dd-main">
@@ -420,9 +421,6 @@ if ($entries) {
               <?php if ($e['hyphen']): ?><span class="dd-hyphen"><?= h($e['hyphen']) ?></span><?php endif ?>
             </div>
           </div>
-          <button class="dd-save-btn" type="button" title="Save word" aria-label="Save to vocabulary list" data-word="<?= h($headword) ?>">
-            <i class="ti ti-bookmark" aria-hidden="true"></i>
-          </button>
         </div>
 
         <?php if ($e['senses'] || $e['synonyms'] || $e['antonyms']): ?>
@@ -507,7 +505,7 @@ document.addEventListener('click', (e) => {
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') about.removeAttribute('open'); });
 })();
 
-// recent searches + saved words, both backed by localStorage
+// recent searches, backed by localStorage
 (() => {
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -536,19 +534,6 @@ document.addEventListener('click', (e) => {
       }).join('');
     }
   }
-
-  // --- saved words (visual bookmark state) ---
-  const SAVED = 'dedict:saved';
-  const saved = new Set(read(SAVED));
-  document.querySelectorAll('.dd-save-btn').forEach((btn) => {
-    const w = btn.dataset.word;
-    if (saved.has(w)) btn.classList.add('saved');
-    btn.addEventListener('click', () => {
-      if (saved.has(w)) { saved.delete(w); btn.classList.remove('saved'); }
-      else { saved.add(w); btn.classList.add('saved'); }
-      localStorage.setItem(SAVED, JSON.stringify([...saved]));
-    });
-  });
 })();
 </script>
 
