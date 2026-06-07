@@ -22,6 +22,8 @@ function buildEntry(array $row): array {
         'senses'   => [],  // attached by lookup() from de_senses
         'synonyms' => json_decode($row['synonyms'], true) ?: [],
         'antonyms' => json_decode($row['antonyms'], true) ?: [],
+        'cefr'     => $row['cefr'] ?? null,   // from german.json frequency list
+        'freq'     => isset($row['freq']) ? (int)$row['freq'] : null,
     ];
 }
 

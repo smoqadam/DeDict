@@ -13,7 +13,6 @@
 // or unparseable output all leave the row as-is and return the original data.
 // The next lookup of the same word simply tries again.
 
-const OPENAI_MODEL = 'gpt-5-mini';
 const OPENAI_URL   = 'https://api.openai.com/v1/chat/completions';
 const OPENAI_TIMEOUT = 30;
 
@@ -21,6 +20,13 @@ function openaiKey(): ?string {
     loadDotEnv();
     $key = getenv('OPENAI_API_KEY');
     return ($key !== false && $key !== '') ? $key : null;
+}
+
+// The model id. Override with OPENAI_MODEL (e.g. gpt-5.4-mini, gpt-5.4-nano).
+function openaiModel(): string {
+    loadDotEnv();
+    $m = getenv('OPENAI_MODEL');
+    return ($m !== false && $m !== '') ? $m : 'gpt-5-mini';
 }
 
 // PHP does not read .env files on its own. Load the project's .env once,
@@ -67,18 +73,26 @@ function enrichEntry(SQLite3 $db, array &$entry): void {
     $data = openaiEnrich(buildEnrichPayload($entry));
     if ($data === null) return;  // failure already logged; retry next lookup
 
+    applyEnrichment($db, $entry, $data);
+}
+
+// Write the model's result back to de_senses and mirror it into $entry.
+// Shared by the live lookup path and the offline batch script. Returns the
+// number of senses written.
+function applyEnrichment(SQLite3 $db, array &$entry, array $data): int {
     // Index the model's senses by idx so we match them to our rows safely,
     // regardless of order or any extra/missing entries it returns.
     $byIdx = [];
     foreach ($data['senses'] ?? [] as $r) {
         if (isset($r['idx'])) $byIdx[(int)$r['idx']] = $r;
     }
-    if (!$byIdx) return;
+    if (!$byIdx) return 0;
 
     $upd = $db->prepare(
         "UPDATE de_senses SET simple_de = :sd, en_translation = :en, examples = :ex WHERE id = :id"
     );
 
+    $written = 0;
     foreach ($entry['senses'] as &$s) {
         $r = $byIdx[(int)$s['idx']] ?? null;
         if ($r === null) continue;
@@ -109,8 +123,10 @@ function enrichEntry(SQLite3 $db, array &$entry): void {
         $s['simple_de'] = $simpleDe;
         $s['english']   = $english;
         $s['examples']  = $examples;
+        $written++;
     }
     unset($s);
+    return $written;
 }
 
 // The grounding we hand the model: enough to identify the word precisely, with
@@ -188,13 +204,10 @@ function enrichSystemPrompt(): string {
     ]);
 }
 
-function openaiEnrich(array $word): ?array {
-    $key = openaiKey();
-    if ($key === null) return null;
-
+function enrichRequestBody(array $word): array {
     $n = max(1, count($word['senses']));
-    $payload = [
-        'model'            => OPENAI_MODEL,
+    return [
+        'model'            => openaiModel(),
         'reasoning_effort' => 'low',
         'max_completion_tokens' => min(8000, 1500 + 700 * $n),
         'response_format'  => [
@@ -210,26 +223,34 @@ function openaiEnrich(array $word): ?array {
             ['role' => 'user',   'content' => json_encode($word, JSON_UNESCAPED_UNICODE)],
         ],
     ];
+}
 
-    [$status, $body] = httpPostJson(OPENAI_URL, $payload, $key);
-    if ($status !== 200) {
-        error_log("dedict enrich: OpenAI HTTP $status: " . substr((string)$body, 0, 500));
-        return null;
-    }
-
-    $resp = json_decode((string)$body, true);
-    $content = $resp['choices'][0]['message']['content'] ?? null;
+// Parse the JSON the model put in message.content into our result array.
+function parseEnrichContent(?string $content): ?array {
     if (!is_string($content)) {
-        error_log('dedict enrich: missing message content in response');
+        error_log('dedict enrich: missing message content');
         return null;
     }
-
     $parsed = json_decode($content, true);
     if (!is_array($parsed)) {
         error_log('dedict enrich: model content was not valid JSON');
         return null;
     }
     return $parsed;
+}
+
+function openaiEnrich(array $word): ?array {
+    $key = openaiKey();
+    if ($key === null) return null;
+
+    [$status, $body] = httpPostJson(OPENAI_URL, enrichRequestBody($word), $key);
+    if ($status !== 200) {
+        error_log("dedict enrich: OpenAI HTTP $status: " . substr((string)$body, 0, 500));
+        return null;
+    }
+
+    $resp = json_decode((string)$body, true);
+    return parseEnrichContent($resp['choices'][0]['message']['content'] ?? null);
 }
 
 function httpPostJson(string $url, array $payload, string $key): array {

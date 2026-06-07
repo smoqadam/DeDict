@@ -29,6 +29,8 @@ $db->exec("
         synonyms TEXT,
         antonyms TEXT,
         tags TEXT,
+        cefr TEXT,
+        freq INTEGER,
         UNIQUE(word, pos)
     );
 
